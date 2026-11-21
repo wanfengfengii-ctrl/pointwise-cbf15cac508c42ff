@@ -108,6 +108,11 @@ def prune_uncommitted_objects(store: ArchiveStore) -> None:
                     "SELECT object_id FROM whole_objects WHERE volume_id = ?", (spec.name,),
                 )
             }
+            referenced.update(
+                row[0] for row in db.execute(
+                    "SELECT object_id FROM takeover_fragments WHERE volume_id = ?", (spec.name,),
+                )
+            )
             for object_id in sorted(candidates - referenced):
                 try:
                     medium.discard_candidate(object_id)

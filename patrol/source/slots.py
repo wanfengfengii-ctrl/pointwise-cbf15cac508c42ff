@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from threading import RLock
 from uuid import uuid4
 
-from patrol import NotFound, StateError, require_text
+from patrol import Conflict, NotFound, StateError, require_text
 from patrol.runs.catalog import RunEntry
 from patrol.runs.settings import SamplingSettings
 from patrol.source.freeze import SourceFrame
@@ -15,6 +15,7 @@ class _OccupiedSlot:
     settings: SamplingSettings
     words: list[int] = field(default_factory=list)
     frozen: SourceFrame | None = None
+    takeover_order: str | None = None
 
 
 class SlotBank:
@@ -101,6 +102,24 @@ class SlotBank:
             if frame is None or (frame_key is not None and frame.frame_key != frame_key):
                 raise NotFound("the requested frozen frame is not in the current slot")
             return frame
+
+    def register_takeover(self, frame_key: str, order_id: str) -> SourceFrame:
+        """Bind a takeover order to the current frozen frame without releasing it."""
+        with self.lock:
+            frame = self.read_current(frame_key)
+            occupied = self._occupied
+            if occupied.takeover_order is None:
+                occupied.takeover_order = order_id
+            elif occupied.takeover_order != order_id:
+                raise Conflict("the current frame already has a different takeover order")
+            return frame
+
+    def current_takeover_order(self) -> str | None:
+        with self.lock:
+            occupied = self._occupied
+            if occupied is None or occupied.frozen is None:
+                return None
+            return occupied.takeover_order
 
     def clear_current(self, frame_key: str) -> None:
         require_text(frame_key, "frame key")

@@ -41,6 +41,7 @@ class ArchiveStore:
     ) -> ArchiveStore:
         from patrol.archive.objects import initialize_objects, prune_uncommitted_objects
         from patrol.archive.receipts import ReceiptRegistry
+        from patrol.archive.takeover import TakeoverRegistry
         from patrol.archive.volumes import VolumeCatalog
         from patrol.handover.index import ShiftIndex
 
@@ -59,6 +60,7 @@ class ArchiveStore:
                 raise InvalidInput("offline selection contains an unknown medium")
             initialize_objects(db)
             ReceiptRegistry.initialize(db)
+            TakeoverRegistry.initialize(db)
             ShiftIndex.initialize(db)
         prune_uncommitted_objects(station)
         return station

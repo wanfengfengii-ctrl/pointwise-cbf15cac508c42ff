@@ -103,11 +103,12 @@ class VolumeCatalog:
             with self._store.read_transaction() as reader:
                 return self.available_words(name, db=reader)
         row = db.execute("""
-            SELECT v.capacity_words, COALESCE(SUM(o.word_count), 0) AS occupied
+            SELECT v.capacity_words,
+                COALESCE((SELECT SUM(o.word_count) FROM whole_objects AS o WHERE o.volume_id = v.name), 0)
+              + COALESCE((SELECT SUM(f.word_count) FROM takeover_fragments AS f WHERE f.volume_id = v.name), 0)
+              AS occupied
             FROM volumes AS v
-            LEFT JOIN whole_objects AS o ON o.volume_id = v.name
             WHERE v.name = ?
-            GROUP BY v.name, v.capacity_words
         """, (name,)).fetchone()
         if row is None:
             raise NotFound(f"unknown medium {name!r}")

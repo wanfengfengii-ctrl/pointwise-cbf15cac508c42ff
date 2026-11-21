@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from patrol import AuditError
 from patrol.archive.objects import WholeObjectRead
 from patrol.archive.receipts import WholeReceipt
+from patrol.archive.takeover import TakeoverOrder
 from patrol.quality.results import PeakResult, evaluate_frame
 from patrol.source.freeze import SourceFrame
 
@@ -24,3 +25,12 @@ def verify_archived_frame(receipt: WholeReceipt, archived: WholeObjectRead) -> A
     if calculated != receipt.result:
         raise AuditError("recalculated peak result differs from the fixed archive result")
     return AuditResult(receipt.receipt_id, frame, calculated)
+
+
+def verify_takeover_frame(order: TakeoverOrder, frame: SourceFrame) -> AuditResult:
+    if frame.origin != order.origin or frame.settings != order.settings:
+        raise AuditError("recovered frame differs from the takeover order's frozen context")
+    calculated = evaluate_frame(frame)
+    if calculated != order.result:
+        raise AuditError("recalculated peak result differs from the fixed takeover result")
+    return AuditResult(order.receipt_id, frame, calculated)
